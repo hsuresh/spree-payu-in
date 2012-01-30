@@ -1,11 +1,20 @@
-map.resources :orders do |order|
-  order.resource :checkout, :member => {:payu_in_checkout => :any, :payu_in_payment => :any, :payu_in_confirm => :any, :payu_in_finish => :any}
-end
+Rails.application.routes.draw do
+  resources :orders do
+    resource :checkout, :controller=>"checkout" do
+      member do
+        get :payu_in_checkout
+        get :payu_in_payment
+        get :payu_in_confirm
+        get :payu_in_finish
+      end
+    end
+  end
 
-map.payu_in_notify "/payu_in_notify", :controller => :payu_in_callbacks, :action => :notify, :method => [:post, :get]
+  match "/payu_in_notify" => "payu_in_callbacks#notify", :method => [:post, :get], :as=> 'payu_in_notify'
 
-map.namespace :admin do |admin|
-  admin.resources :orders do |order|
-    order.resources :payu_in_payments, :member => {:capture => :get, :refund => :any}, :has_many => [:txns]
+  namespace :admin do
+    resources :orders do
+      resources :payu_in_payments, :member => {:capture => :get, :refund => :any}, :has_many => [:txns]
+    end
   end
 end
