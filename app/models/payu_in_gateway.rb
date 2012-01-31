@@ -18,8 +18,7 @@ class PayuInGateway
     @opts[:salt]
   end
   
-  def hash(order)
-#    Digest::SHA512.hexdigest("#{self.merchant_id}|#{order.id}|#{order.total.to_f}|#{order.number}|#{order.bill_address.firstname}|#{order.user.email}|||||||||||#{self.salt}")
-    Digest::SHA512.hexdigest("#{self.merchant_id}|#{order.id}|#{order.total.to_f}|#{order.number}|#{order.bill_address.firstname}|#{order.user.email}|#{self.salt}")
+  def hash(order, payment_method_id)
+    Digest::SHA512.hexdigest("#{self.merchant_id}|#{order.id}|#{order.total.to_i}|#{order.number}|#{order.bill_address.firstname}|#{order.user.email}|#{payment_method_id}||||||||||#{self.salt}")
   end
 end

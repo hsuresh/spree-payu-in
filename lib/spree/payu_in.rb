@@ -1,10 +1,14 @@
+require 'bigdecimal'
+
 module Spree::PayuIn
   include ERB::Util
   include ActiveMerchant::RequiresParameters
 
+
   def self.included(target)
     puts "Including payuin: #{target}"
     target.before_filter :redirect_to_payu_in, :only => [:update]
+    target.skip_before_filter :verify_authenticity_token, :only=> [:gateway_callback]
   end
 
   def payu_checkout
@@ -17,6 +21,37 @@ module Spree::PayuIn
     load_order
     @gateway = payment_method.provider
     render "payment/gateway/payu_in_payment"
+  end
+
+  def gateway_callback
+    @order = Order.find(params[:txnid])
+    if params[:status] == 'failed'
+      render 'checkout/failed'
+    elsif params[:status] == 'canceled'
+      render 'checkout/failed'
+    else
+      puts "Payment successful. payu_in_notify:#{params.inspect}"
+      payment = @order.payments.create(:amount => BigDecimal.new(params["amount"]),
+                                                :source => PayuPayment.new_from(params),
+                                                :payment_method_id => params['udf1'])
+
+      @order.state = 'payment'
+      if @order.next
+        state_callback(:after)
+      else
+        flash[:error] = I18n.t(:payment_processing_failed)
+        respond_with(@order, :location => checkout_state_path(@order.state))
+        return
+      end
+
+      if @order.state == "complete" || @order.completed?
+        flash[:notice] = I18n.t(:order_processed_successfully)
+        flash[:commerce_tracking] = "nothing special"
+        respond_with(@order, :location => completion_route)
+      else
+        respond_with(@order, :location => checkout_state_path(@order.state))
+      end
+    end
   end
 
   private
