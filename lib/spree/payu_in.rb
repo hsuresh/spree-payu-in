@@ -53,6 +53,37 @@ module Spree::PayuIn
     end
   end
 
+  def gateway_callback
+    @order = Order.find(params[:txnid])
+    if params[:status] == 'failed'
+      render 'checkout/failed'
+    elsif params[:status] == 'canceled'
+      render 'checkout/failed'
+    else
+      puts "Payment successful. payu_in_notify:#{params.inspect}"
+      payment = @order.payments.create(:amount => BigDecimal.new(params["amount"]),
+                                                :source => PayuPayment.new_from(params),
+                                                :payment_method_id => params['udf1'])
+
+      @order.state = 'payment'
+      if @order.next
+        state_callback(:after)
+      else
+        flash[:error] = I18n.t(:payment_processing_failed)
+        respond_with(@order, :location => checkout_state_path(@order.state))
+        return
+      end
+
+      if @order.state == "complete" || @order.completed?
+        flash[:notice] = I18n.t(:order_processed_successfully)
+        flash[:commerce_tracking] = "nothing special"
+        respond_with(@order, :location => completion_route)
+      else
+        respond_with(@order, :location => checkout_state_path(@order.state))
+      end
+    end
+  end
+
   private
   def redirect_to_payu_in
     return unless params['state'] == "address"
