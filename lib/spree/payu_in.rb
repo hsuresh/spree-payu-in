@@ -19,7 +19,8 @@ module Spree::PayuIn
   def payu_in_payment
     load_order
     @gateway = payment_method.provider
-    render "payment/gateway/payu_in_payment"
+    puts "Gateway external url: #{@gateway.external_payment_url}"
+    render "checkout/_payment_options"
   end
 
   def gateway_callback
@@ -54,12 +55,17 @@ module Spree::PayuIn
 
   private
   def redirect_to_payu_in
-    return unless params['state'] == "payment"
-    load_order
-    payment_method = PaymentMethod.find(params[:order][:payments_attributes].first[:payment_method_id])
+    return unless params['state'] == "address"
 
-    if payment_method.kind_of?(Gateway::PayuIn)
-      redirect_to payu_in_payment_order_checkout_url(@order, :payment_method_id => payment_method)
+    if @order.update_attributes(object_params)
+      load_order
+      payment_method = PaymentMethod.find(params[:order][:payments_attributes].first[:payment_method_id])
+
+      if payment_method.kind_of?(Gateway::PayuIn)
+        redirect_to payu_in_payment_order_checkout_url(@order, :payment_method_id => payment_method)
+      end
+    else
+      respond_with(@order) { |format| format.html { render :edit } }
     end
   end
   
