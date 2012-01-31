@@ -10,7 +10,7 @@ Rails.application.routes.draw do
     end
   end
 
-  match "/payu_in_notify" => "payu_in_callbacks#notify", :method => [:post, :get], :as=> 'payu_in_notify'
+  match "/payment_confirmed" => "checkout#gateway_callback", :method => :post, :as=> 'payment_callback'
 
   namespace :admin do
     resources :orders do

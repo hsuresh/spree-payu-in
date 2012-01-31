@@ -17,9 +17,10 @@
   <%= hidden_field_tag 'Zipcode', @order.bill_address.zipcode %>
   <%= hidden_field_tag 'email', @order.user.email %>
   <%= hidden_field_tag 'phone', @order.bill_address.phone %>
-  <%= hidden_field_tag 'surl', payu_in_notify_url %>
-  <%= hidden_field_tag 'Furl', payu_in_notify_url(:status=>'failed') %>
-  <%= hidden_field_tag 'curl', payu_in_notify_url(:status=> 'canceled') %>
-  <%= hidden_field_tag 'Hash', @gateway.hash(@order) %>
+  <%= hidden_field_tag 'surl', payment_callback_url %>
+  <%= hidden_field_tag 'Furl', payment_callback_url(:status=>'failed') %>
+  <%= hidden_field_tag 'curl', payment_callback_url(:status=> 'canceled') %>
+  <%= hidden_field_tag 'udf1', params[:payment_method_id] %>
+  <%= hidden_field_tag 'Hash', @gateway.hash(@order, params[:payment_method_id]) %>
   <%= submit_tag 'Proceed to payment' %>
 <% end %>
