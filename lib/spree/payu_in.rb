@@ -6,8 +6,13 @@ module Spree::PayuIn
 
 
   def self.included(target)
-    target.before_filter :redirect_to_payu_in, :only => [:update]
     target.skip_before_filter :verify_authenticity_token, :only=> [:gateway_callback]
+  end
+
+  def before_payment_options
+    payment_method = PaymentMethod.find_by_type('Gateway::PayuIn')
+    @gateway = payment_method.provider
+    render 'checkout/payment_options'
   end
 
   def payu_checkout
@@ -18,39 +23,13 @@ module Spree::PayuIn
 
   def payu_in_payment
     load_order
+    payment_method = PaymentMethod.find(params[:order][:payments_attributes].first[:payment_method_id])
     @gateway = payment_method.provider
-    puts "Gateway external url: #{@gateway.external_payment_url}"
-    render "checkout/_payment_options"
+    render "checkout/edit"
   end
 
-  def gateway_callback
-    @order = Order.find(params[:txnid])
-    if params[:status] == 'failed'
-      render 'checkout/failed'
-    elsif params[:status] == 'canceled'
-      render 'checkout/failed'
-    else
-      payment = @order.payments.create(:amount => BigDecimal.new(params["amount"]),
-                                                :source => PayuPayment.new_from(params),
-                                                :payment_method_id => params['udf1'])
-
-      @order.state = 'payment'
-      if @order.next
-        state_callback(:after)
-      else
-        flash[:error] = I18n.t(:payment_processing_failed)
-        respond_with(@order, :location => checkout_state_path(@order.state))
-        return
-      end
-
-      if @order.state == "complete" || @order.completed?
-        flash[:notice] = I18n.t(:order_processed_successfully)
-        flash[:commerce_tracking] = "nothing special"
-        respond_with(@order, :location => completion_route)
-      else
-        respond_with(@order, :location => checkout_state_path(@order.state))
-      end
-    end
+  def object_params
+    params[:order]
   end
 
   def gateway_callback
@@ -84,22 +63,11 @@ module Spree::PayuIn
     end
   end
 
-  private
-  def redirect_to_payu_in
-    return unless params['state'] == "address"
-
-    if @order.update_attributes(object_params)
-      load_order
-      payment_method = PaymentMethod.find(params[:order][:payments_attributes].first[:payment_method_id])
-
-      if payment_method.kind_of?(Gateway::PayuIn)
-        redirect_to payu_in_payment_order_checkout_url(@order, :payment_method_id => payment_method)
-      end
-    else
-      respond_with(@order) { |format| format.html { render :edit } }
-    end
+  def completion_route
+    order_path(@order, :checkout_complete=>true)
   end
-  
+
+  private
   def payment_method
     PaymentMethod.find(params[:payment_method_id])
   end
