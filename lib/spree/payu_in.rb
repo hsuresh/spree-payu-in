@@ -35,8 +35,14 @@ module Spree::PayuIn
   def gateway_callback
     @order = Order.find(params[:txnid])
     if params[:status] == 'failed'
+      payment_method = PaymentMethod.find(params['udf1'])
+      flash[:notice] = "Payment processing failed. Please choose a different payment option, or try again."
+      @gateway = payment_method.provider
       render 'checkout/failed'
     elsif params[:status] == 'canceled'
+      flash[:notice] = "You cancelled payment. Please choose a different payment option, or try again."
+      payment_method = PaymentMethod.find(params['udf1'])
+      @gateway = payment_method.provider
       render 'checkout/failed'
     else
       puts "Payment successful. payu_in_notify:#{params.inspect}"
